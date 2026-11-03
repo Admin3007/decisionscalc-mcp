@@ -34,6 +34,19 @@ describe('parental leave gap (free calculator)', () => {
     expect(leaveGap({ country: 'qc', salary: 150000, weeks: 50 }).statutory).toBeCloseTo(25 * 0.7 * i + 25 * 0.55 * i, 6);
   });
 
+  it('US California: waiting week, then 17 weeks at 90% of $1,000 (SDI 9 + PFL 8)', () => {
+    const r = leaveGap({ country: 'us-CA', salary: 52000, weeks: 20 });
+    expect(r.weekly[0]).toBe(0);
+    expect(r.paidWeeks).toBe(17);
+    expect(r.statutory).toBeCloseTo(17 * 900, 6);
+  });
+
+  it('US New York: recovery at 50% up to $170, then 67% up to $1,228.53; no state program pays 0', () => {
+    expect(leaveGap({ country: 'us-NY', salary: 78000, weeks: 22 }).statutory).toBeCloseTo(9 * 170 + 12 * 0.67 * 1500, 6);
+    expect(leaveGap({ country: 'us-XX', salary: 78000, weeks: 12 }).statutory).toBe(0);
+    expect(leaveGap({ country: 'us-TX', salary: 78000, weeks: 12 }).statutory).toBe(0);
+  });
+
   it('employer top-up fills the gap to the chosen share for its weeks', () => {
     const r = leaveGap({ country: 'gb', salary: 52000, weeks: 26, topUp: 1, topUpWeeks: 26 });
     expect(r.gap).toBeCloseTo(0, 6);

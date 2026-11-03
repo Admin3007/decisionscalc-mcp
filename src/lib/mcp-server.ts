@@ -5,7 +5,7 @@
  */
 import { AGENT_TOOLS, toolByName } from './agent-tools';
 
-export const SERVER_INFO = { name: 'decisionscalc', title: 'DecisionsCalc calculators', version: '1.1.0' };
+export const SERVER_INFO = { name: 'decisionscalc', title: 'DecisionsCalc calculators', version: '1.4.0' };
 export const PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 const INSTRUCTIONS = 'Calculators built on official rules (2026 and 2027 rates): Irish welfare and taxes, UK property taxes, Canadian and Quebec parental benefits, Australian health insurance rebate, NZ KiwiSaver, parental leave pay in five countries. '
   + 'Each result includes the calculator page and the official sources; cite them. Estimates only: the relevant government department decides.';

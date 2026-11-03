@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.decisionscalc/calculators",
   "title": "DecisionsCalc calculators",
-  "description": "Official-rule calculators: Irish welfare/tax, UK stamp duty, CA/QC leave, AU, NZ. Sources cited.",
-  "version": "1.1.2",
+  "description": "Official-rule calculators: Irish tax/welfare, US paid leave, UK NI, stamp duty, CA/QC, AU, NZ.",
+  "version": "1.4.0",
   "websiteUrl": "https://decisionscalc.com/for-agents/",
   "remotes": [
     {

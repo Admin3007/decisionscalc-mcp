@@ -26,7 +26,11 @@ import { computeQpip } from './calc/ca-qpip';
 import { computeAuHealth } from './calc/au-health-rebate';
 import { computeKiwiSaver } from './calc/nz-kiwisaver';
 import { leaveGap } from './calc/parental-leave-gap';
+import { US_STATES } from '../data/us-paid-leave.js';
 import { computeNi } from './calc/uk-voluntary-ni';
+import { computeLandlord } from './calc/ie-landlord';
+import { computePensionRelief } from './calc/ie-pension-relief';
+import { computeCat } from './calc/ie-cat';
 
 const SITE = 'https://decisionscalc.com';
 const READ = 'Official figures read on 3 November 2026. General information, not financial advice.';
@@ -45,7 +49,7 @@ const wrap = (page: string, result: unknown, sources: string[], next?: { name: s
   ({ result, page: SITE + page, sources, note: READ, ...(next ? { next: { ...next, url: SITE + next.url } } : {}) });
 /** Paid follow-on where it genuinely helps the person (shown to the agent as an optional next step). */
 const LEAVE_PLANNER = { name: 'Parental Leave Planner (spreadsheet, US$19 one-time)', url: '/parental-leave-planner/', what: 'Week-by-week leave pay for both parents, the household income gap and a monthly savings target, Irish edition.' };
-const LEAVE_PLANNER_ALL = { ...LEAVE_PLANNER, what: 'Week-by-week leave pay for both parents, employer top-ups, each week’s dated rate and a monthly savings target; UK, Ireland, Australia and Canada (EI and QPIP) editions.' };
+const LEAVE_PLANNER_ALL = { ...LEAVE_PLANNER, what: 'Week-by-week leave pay for both parents, employer top-ups, each week’s dated rate and a monthly savings target; US (12 states and DC), UK, Ireland, Australia and Canada (EI and QPIP) editions.' };
 const ETF_TRACKER = { name: 'Irish ETF Exit Tax Tracker (spreadsheet, US$15 one-time)', url: '/irish-etf-tax-tracker/', what: 'Every ETF purchase’s 8-year deemed disposal date and exit tax due each year (38% in 2026, 35% from 2027), with credit on sale. Free one-holding calculator on the page.' };
 const str = (description: string, values: string[]) => ({ type: 'string', enum: values, description });
 /** Drop year-by-year arrays: agents get the summary, the page has the detail. */
@@ -137,6 +141,14 @@ export const AGENT_TOOLS: AgentTool[] = [
       ['https://www.revenue.ie/en/gains-gifts-and-inheritance/transfering-an-asset/how-to-calculate-cgt.aspx', 'https://www.revenue.ie/en/gains-gifts-and-inheritance/transfering-an-asset/when-and-how-do-you-pay-and-file-cgt.aspx'], ETF_TRACKER),
   },
   {
+    name: 'ireland_inheritance_gift_tax',
+    description: 'Ireland: Capital Acquisitions Tax (CAT) on a gift or inheritance: group threshold by relationship (A child €420,000, B sibling/niece/nephew/grandchild/parent €44,000, C everyone else €22,000 from 7 October 2026; €400,000/€40,000/€20,000 before), 33% above the unused threshold after earlier benefits in the same group since 5 December 1991, the €3,000 small gift exemption, whether an IT38 return is needed (above 80% of the threshold) and the 31 October pay-and-file date. Spouses and civil partners are exempt; reliefs (dwelling house, agricultural, business, favourite nephew) are not applied.',
+    page: '/tools/ireland-inheritance-tax-calculator/',
+    inputSchema: { type: 'object', properties: { group: str('Group by relationship to the person giving: A = child, B = parent/brother/sister/niece/nephew/grandparent/grandchild, C = anyone else', ['A', 'B', 'C']), kind: str('Gift (during life) or inheritance (on death)', ['gift', 'inheritance']), value: num('Market value received, less debts and costs paid by you, EUR'), date: { type: 'string', description: 'Date of the gift or inheritance YYYY-MM-DD (decides the threshold)' }, priorInGroup: num('Taxable value of earlier gifts/inheritances received in the same group since 5 December 1991, EUR (default 0)') }, required: ['group', 'value', 'date'] },
+    run: (a) => wrap('/tools/ireland-inheritance-tax-calculator/', computeCat({ group: a.group, kind: a.kind === 'gift' ? 'gift' : 'inheritance', value: a.value, date: String(a.date), priorInGroup: a.priorInGroup ?? 0 }),
+      ['https://www.revenue.ie/en/gains-gifts-and-inheritance/cat-thresholds-rates-and-aggregation-rules/cat-thresholds.aspx', 'https://www.revenue.ie/en/gains-gifts-and-inheritance/cat-thresholds-rates-and-aggregation-rules/cat-aggregation-rules.aspx', 'https://www.revenue.ie/en/gains-gifts-and-inheritance/cat-thresholds-rates-and-aggregation-rules/cat-groups.aspx']),
+  },
+  {
     name: 'ireland_myfuturefund_pension',
     description: 'Ireland: MyFutureFund (pension auto-enrolment, started January 2026): what you, your employer and the State pay in (1.5/1.5/0.5% rising to 6/6/2% by year 10, on pay up to €80,000) and the projected pot at retirement.',
     page: '/tools/ireland-myfuturefund-calculator/',
@@ -151,6 +163,22 @@ export const AGENT_TOOLS: AgentTool[] = [
     inputSchema: { type: 'object', properties: { amount: num('Amount to put away, EUR'), years: num('Years'), marginalRate: num('Your income tax rate, 20 or 40', { enum: [20, 40] }), growth: num('Market growth % a year (default 5, an assumption)'), depositRate: num('Bank deposit rate % AER (default 2)') }, required: ['amount', 'years', 'marginalRate'] },
     run: (a) => wrap('/tools/ireland-savings-investment-calculator/', computeHomes({ amount: a.amount, years: a.years, marginalRate: a.marginalRate, growth: a.growth ?? 5, depositRate: a.depositRate ?? 2 }),
       ['https://www.ntma.ie/', 'https://www.revenue.ie/en/tax-professionals/tdm/income-tax-capital-gains-tax-corporation-tax/part-27/27-01a-02.pdf'], ETF_TRACKER),
+  },
+  {
+    name: 'ireland_pension_tax_relief',
+    description: 'Ireland: income tax relief on personal pension contributions and AVCs (occupational scheme, PRSA, RAC, PEPP): the age-related limit (under 30 15%, 30-39 20%, 40-49 25%, 50-54 30%, 55-59 35%, 60+ 40% of earnings up to €115,000), relief at the marginal rate (2026 or Budget 2027 bands; no USC or PRSI relief), the net cost and the room left this year.',
+    page: '/tools/ireland-pension-tax-relief-calculator/',
+    inputSchema: { type: 'object', properties: { year: { type: 'number', enum: [2026, 2027], description: 'Tax year' }, status: str('Tax status', ['single', 'single-parent', 'married-one', 'married-two']), age: num('Age in the tax year'), pay: num('Gross earnings from the job, EUR'), spousePay: num('Spouse gross salary (married-two), EUR'), contributions: num('Own contributions this year incl. AVCs, EUR') }, required: ['age', 'pay', 'contributions'] },
+    run: (a) => wrap('/tools/ireland-pension-tax-relief-calculator/', computePensionRelief({ year: a.year === 2027 ? 2027 : 2026, status: a.status ?? 'single', age: a.age, pay: a.pay, spousePay: a.spousePay, contributions: a.contributions }),
+      ['https://www.revenue.ie/en/jobs-and-pensions/pension/relief/index.aspx', 'https://www.revenue.ie/en/jobs-and-pensions/pension/relief/tax-relief-limits.aspx']),
+  },
+  {
+    name: 'ireland_landlord_rental_tax',
+    description: 'Ireland: tax on residential rental income for an individual landlord: profit after mortgage interest (deductible only for RTB-registered tenancies), other expenses and 12.5% wear and tear, income tax at the marginal rate on top of salary (2026 or Budget 2027 bands), the Residential Premises Rental Income Relief (up to €1,000, 20% of profit), USC with the 3% surcharge on non-PAYE income over €100,000, and PRSI on unearned income over €5,000 for employees under 66.',
+    page: '/tools/ireland-landlord-tax-calculator/',
+    inputSchema: { type: 'object', properties: { year: { type: 'number', enum: [2026, 2027], description: 'Tax year' }, status: str('Tax status', ['single', 'single-parent', 'married-one', 'married-two']), pay: num('Your gross salary a year, EUR'), spousePay: num('Spouse gross salary (married-two), EUR'), rent: num('Rent received in the year, EUR'), mortgageInterest: num('Mortgage interest for the year, EUR'), rtbRegistered: bool('Tenancy registered with the RTB (default true)'), otherExpenses: num('Other allowable expenses, EUR'), furnishings: num('Cost of furniture and appliances bought in the last 8 years, EUR'), lossesForward: num('Rental losses carried forward, EUR'), over66: bool('66 or older') }, required: ['rent'] },
+    run: (a) => wrap('/tools/ireland-landlord-tax-calculator/', computeLandlord({ year: a.year === 2027 ? 2027 : 2026, status: a.status ?? 'single', pay: a.pay ?? 0, spousePay: a.spousePay, rent: a.rent, mortgageInterest: a.mortgageInterest ?? 0, rtbRegistered: a.rtbRegistered !== false, otherExpenses: a.otherExpenses ?? 0, furnishings: a.furnishings ?? 0, lossesForward: a.lossesForward, over66: !!a.over66 }),
+      ['https://www.revenue.ie/en/property/rental-income/irish-rental-income/what-expenses-are-allowed.aspx', 'https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/land-and-property/rprir/how-much-can-you-claim.aspx', 'https://www.revenue.ie/en/jobs-and-pensions/usc/other-rates.aspx', 'https://www.citizensinformation.ie/en/social-welfare/irish-social-welfare-system/social-insurance-prsi/social-insurance/']),
   },
   {
     name: 'uk_stamp_duty_england_ni',
@@ -207,13 +235,13 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'parental_leave_income_gap',
-    description: 'Statutory parental leave pay for a birth parent and the income gap against normal pay (gross, before tax) in the UK (Statutory Maternity Pay), Ireland (Maternity Benefit), Canada (EI), Quebec (QPIP) or Australia (Parental Leave Pay), with an optional employer top-up.',
+    description: 'Statutory parental leave pay for a birth parent and the income gap against normal pay (gross, before tax) in the UK (Statutory Maternity Pay), Ireland (Maternity Benefit), Canada (EI), Quebec (QPIP), Australia (Parental Leave Pay) or a US state’s paid family and medical leave (us-CA, us-NY, us-NJ, us-WA, us-MA and the rest; us-XX = no state program, FMLA unpaid), with an optional employer top-up.',
     page: '/parental-leave-planner/',
-    inputSchema: { type: 'object', properties: { country: str('Country', ['gb', 'ie', 'ca', 'qc', 'au']), salary: num('Gross annual pay in local currency'), weeks: num('Weeks of leave (default 52)'), topUp: num('Employer tops pay up to this share of normal pay, 0 to 1'), topUpWeeks: num('Weeks the top-up lasts') }, required: ['country', 'salary'] },
+    inputSchema: { type: 'object', properties: { country: str('Country, or us- plus the state code', ['gb', 'ie', 'ca', 'qc', 'au', ...US_STATES.map((s) => `us-${s.code}`)]), salary: num('Gross annual pay in local currency'), weeks: num('Weeks of leave (default 52)'), topUp: num('Employer tops pay up to this share of normal pay, 0 to 1'), topUpWeeks: num('Weeks the top-up lasts') }, required: ['country', 'salary'] },
     run: (a) => {
       const r = leaveGap({ country: a.country, salary: a.salary, weeks: a.weeks ?? 52, topUp: a.topUp, topUpWeeks: a.topUpWeeks });
       return wrap('/parental-leave-planner/', { statutory: Math.round(r.statutory), topUp: Math.round(r.topUp), normal: Math.round(r.normal), gap: Math.round(r.gap), paidWeeks: r.paidWeeks },
-        ['https://www.gov.uk/maternity-pay-leave/pay', 'https://www.citizensinformation.ie/en/social-welfare/families-and-children/maternity-benefit/', 'https://www.canada.ca/en/services/benefits/ei/ei-maternity-parental.html', 'https://www.quebec.ca/en/family-and-support-for-individuals/pregnancy-parenthood/financial-support-pregnant-women-families/quebec-parental-insurance-plan', 'https://www.servicesaustralia.gov.au/parental-leave-pay'], LEAVE_PLANNER_ALL);
+        ['https://www.gov.uk/maternity-pay-leave/pay', 'https://www.citizensinformation.ie/en/social-welfare/families-and-children/maternity-benefit/', 'https://www.canada.ca/en/services/benefits/ei/ei-maternity-parental.html', 'https://www.quebec.ca/en/family-and-support-for-individuals/pregnancy-parenthood/financial-support-pregnant-women-families/quebec-parental-insurance-plan', 'https://www.servicesaustralia.gov.au/parental-leave-pay', 'https://edd.ca.gov/en/disability/Calculating_PFL_Benefit_Payment_Amounts/', 'https://paidfamilyleave.ny.gov/2026'], LEAVE_PLANNER_ALL);
     },
   },
   {

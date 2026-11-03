@@ -10,10 +10,14 @@
  *    $729 (2026) (canada.ca).
  *  - qc: QPIP basic plan 18 weeks at 70% + 32 shareable (7 at 70%, 25 at 55%), earnings up to
  *    $103,000 (2026), no waiting week (quebec.ca).
+ *  - us-XX: the state's paid family and medical leave for the birth parent (waiting week, pregnancy and
+ *    recovery weeks, then bonding, up to the state's limit), src/data/us-paid-leave.js; XX = none.
  * The free version uses one flat rate per country (the rate in force for most of a 2027 leave);
  * the workbook applies each week's dated rate.
  */
-export type LeaveCountry = 'gb' | 'au' | 'ie' | 'ca' | 'qc';
+import { US_STATES, usWeeklyBenefit, usRecoveryBenefit } from '../../data/us-paid-leave.js';
+
+export type LeaveCountry = 'gb' | 'au' | 'ie' | 'ca' | 'qc' | `us-${string}`;
 
 export const LEAVE_RULES = {
   gb: { flat: 194.32, lel: 129, weeks: 39, high: 6, pct: 0.9 },
@@ -49,6 +53,13 @@ export interface LeaveResult {
 /** Statutory pay in leave week k (1-based). */
 export function statutoryWeek(country: LeaveCountry, salary: number, k: number): number {
   const wk = salary / 52;
+  if (country.startsWith('us-')) {
+    const s = US_STATES.find((x) => x.code === country.slice(3));
+    if (!s || k <= s.wait1) return 0;
+    const j = k - s.wait1;
+    if (j > Math.min(s.rec + s.bond, s.cap)) return 0;
+    return j <= s.rec ? usRecoveryBenefit(s, wk) : usWeeklyBenefit(s, wk);
+  }
   switch (country) {
     case 'gb': {
       const R = LEAVE_RULES.gb;
