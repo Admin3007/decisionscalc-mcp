@@ -1,0 +1,8 @@
+{
+  "name": "decisionscalc-mcp",
+  "private": true,
+  "type": "module",
+  "description": "Source of the DecisionsCalc MCP server (https://decisionscalc.com/mcp): calculators built on official rules.",
+  "scripts": { "test": "vitest run" },
+  "devDependencies": { "vitest": "^2.1.9" }
+}
