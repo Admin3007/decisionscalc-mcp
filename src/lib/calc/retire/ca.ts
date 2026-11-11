@@ -15,7 +15,9 @@
  * Not modelled (said on the page): Quebec (QPP and Quebec tax), the Allowance for a partner aged 60-64 and GIS when
  * only one partner gets OAS, provincial low-income tax reductions and senior supplements, the CPP post-retirement
  * benefit, TFSA rules beyond "savings grow after tax", tax on non-registered investment income, RRSP pension
- * adjustments, CPP sharing, and the planned 2027 change to the CPP base rate (not yet confirmed).
+ * adjustments and CPP sharing. 2027 CPP rate re-checked 12 Nov 2026: CRA's table shows 5.75% for 2027 (YMPE $76,700, max
+ * $4,209.00); the base rate falls from 4.95% to 4.75% (Bill C-30, Royal Assent 19 Jun 2026; Chief Actuary's 33rd report),
+ * the 1% first enhancement is unchanged.
  */
 import type { BenefitCtx, PersonInput, PlanInput, RulePack, Source, TaxPerson, TaxYear } from './types';
 
@@ -48,8 +50,8 @@ export const CA_FED = {
   thresholds: [58523, 117045, 181440, 258482] as const, rates: [0.14, 0.205, 0.26, 0.29, 0.33] as const,
   bpaMax: 16452, bpaMin: 14829, ageAmount: 9208, ageFrom: 46432, ageRate: 0.15, pensionAmount: 2000, employment: 1501, creditRate: 0.14,
 } as const;
-/** CPP and EI contributions on pay, 2027 limits (published): 5.95% (4.95% base, a credit; 1% enhanced, a deduction) above $3,500 to the YMPE; CPP2 4% to the YAMPE; EI 1.64%. */
-export const CA_CPP = { ympe: 76700, yampe: 87400, exemption: 3500, rate: 0.0595, base: 0.0495, cpp2: 0.04, eiRate: 0.0164, eiMax: 70800, stopAge: 70 } as const;
+/** CPP and EI contributions on pay, 2027 limits (published): 5.75% (4.75% base, a credit; 1% enhanced, a deduction) above $3,500 to the YMPE; CPP2 4% to the YAMPE; EI 1.64%. */
+export const CA_CPP = { ympe: 76700, yampe: 87400, exemption: 3500, rate: 0.0575, base: 0.0475, cpp2: 0.04, eiRate: 0.0164, eiMax: 70800, stopAge: 70 } as const;
 /** CPP: maximum at 65 $1,507.65 a month (January 2026); -0.6% a month before 65 (from 60), +0.7% a month after (to 70). */
 export const CA_CPP_PENSION = { max65: 1507.65, early: 0.072, late: 0.084, from: 60, to: 70 } as const;
 /** OAS Oct-Dec 2026: $762.50 a month at 65-74, 10% more from 75; years in Canada after 18 / 40 (10 minimum); +0.6% a month deferred to 70; recovery tax 15% of net income over $95,323 (2026). */
@@ -185,7 +187,7 @@ export const CA_SOURCES: Source[] = [
   { what: 'Pension income splitting: up to 50% of eligible pension income to a spouse or common-law partner; RRIF income from 65', url: U.split, read: READ },
   { what: 'CPP 2027: YMPE $76,700, YAMPE $87,400; RRSP limit $35,390 (2027)', url: U.ympe, read: READ },
   { what: 'EI 2027: 1.64% on insurable earnings up to $70,800', url: U.ei, read: READ },
-  { what: 'CPP maximum at 65 $1,507.65 a month (2026); OAS Oct-Dec 2026 $762.50 (65-74), $838.75 (75+); GIS single $1,138.90, each of a couple on OAS $685.56; CPP 5.95% from $3,500, CPP2 4%', url: U.esdc, read: READ },
+  { what: 'CPP maximum at 65 $1,507.65 a month (2026); OAS Oct-Dec 2026 $762.50 (65-74), $838.75 (75+); GIS single $1,138.90, each of a couple on OAS $685.56; CPP 5.75% from $3,500 in 2027 (4.75% base), CPP2 4%', url: U.esdc, read: READ },
   { what: 'CPP from 60 to 70: 0.6% less a month before 65 (36% at 60), 0.7% more a month after 65 (42% at 70)', url: U.cppStart, read: READ },
   { what: 'OAS: years lived in Canada after 18 / 40 (10 minimum), 10% more from 75', url: U.oasAmount, read: READ },
   { what: 'OAS deferral: 0.6% more a month after 65, up to 36% at 70; no GIS while deferring', url: U.oasStart, read: READ },

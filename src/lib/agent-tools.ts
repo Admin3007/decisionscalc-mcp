@@ -22,6 +22,7 @@ import { computeHomes } from './calc/ie-money-homes';
 import { computeIia } from './calc/ie-investment-account';
 import { computeOverpay } from './calc/ie-overpay';
 import { computePcp } from './calc/ie-pcp';
+import { computeMove, IE_RENT, type Origin } from './calc/ie-moving-home';
 import { box3 as nlBox3, BOX3_SOURCES } from './calc/nl-box3';
 import { paymentsOnAccount, POA_SOURCES } from './calc/uk-payments-on-account';
 import { ruling as nlRuling, RULING_SOURCES } from './calc/nl-30-ruling';
@@ -62,7 +63,7 @@ import { compareDependentCare } from './calc/us-dependent-care';
 import { divorceSplit } from './calc/us-divorce-split';
 import { compareLumpSum, LUMP_SOURCES } from './calc/us-pension-lump-sum';
 import { US_STATES } from '../data/us-paid-leave.js';
-import { computeNi } from './calc/uk-voluntary-ni';
+import { computeNi, whereYouLive, type Residence } from './calc/uk-voluntary-ni';
 import { computeLandlord } from './calc/ie-landlord';
 import { computeSellOrKeep, roundResult, EXAMPLE as SELL_KEEP_EXAMPLE } from './calc/ie-sell-or-keep';
 import { computePensionRelief } from './calc/ie-pension-relief';
@@ -329,6 +330,29 @@ export const AGENT_TOOLS: AgentTool[] = [
       const { balances: _pb, ...pcp } = r.pcp; const { balances: _lb, ...loan } = r.loan;
       return wrap('/tools/ireland-pcp-vs-car-loan-calculator/', { ...r, pcp, loan, assumptions: 'Measured at the end of the PCP term; same car and end value in every route; savings interest after 33% DIRT; fees, insurance and running costs not included; rates are the inputs, not market rates. On these assumptions only, not advice.' },
         ['https://www.ccpc.ie/manage-your-money/borrowing-money/car-loans-and-car-finance/personal-contract-plan', 'https://www.ccpc.ie/manage-your-money/borrowing-money/car-loans-and-car-finance/paying-for-your-car', 'https://www.ccpc.ie/manage-your-money/borrowing-money/car-loans-and-car-finance/hire-purchase', 'https://www.citizensinformation.ie/en/money-and-tax/personal-finance/loans-and-credit/hire-purchase/', 'https://www.revenue.ie/en/additional-incomes/dirt/what-dirt-rate-is-applicable.aspx', 'https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32008L0048']);
+    },
+  },
+  {
+    name: 'ireland_moving_home_compare',
+    description: 'Is it worth moving home to Ireland? Compares what a person or couple keeps each month where they live now (UK or Scotland, Australia, Canada with province, or the US with state) with an Irish job offer in 2027: take-home pay (Irish Budget 2027 income tax, USC and PRSI with the Rent Tax Credit; UK 2026-27 tax and NI; Australia 2027-28 tax, LITO and Medicare levy; Canada federal and provincial tax, CPP 5.75%, CPP2 and EI; US 2026 federal tax, FICA and state tax), rent or mortgage, childcare (Irish National Childcare Scheme subsidy and fee cap, now or from September 2027), Irish Child Benefit €140 a child a month, and the Irish salary needed to be no worse off. Irish rent defaults to the RTB Rent Index Q1 2026 average for the county or city. Everything is converted to euro at the ECB rate of 11 Nov 2026 unless fx is given.',
+    page: '/tools/ireland-moving-home-calculator/',
+    inputSchema: { type: 'object', properties: {
+      origin: str('Where you live now', ['gb', 'gb-sct', 'au', 'us', 'ca']), usState: { type: 'string', description: 'US state code (AZ CA CO FL GA IL MA MI NC NJ NV NY OH PA TN TX VA WA); others: no state tax counted' },
+      caProvince: { type: 'string', description: 'Canadian province or territory code, e.g. ON, BC, AB (default ON)' },
+      couple: bool('Married or civil partners'), salaryNow: num('Your gross salary a year now, local currency'), partnerNow: num('Partner salary a year now, local currency'),
+      salaryIe: num('Your Irish gross salary offer a year, EUR'), partnerIe: num('Partner Irish salary a year, EUR'),
+      children: num('Number of children'), inCare: num('Children in full-time childcare (up to senior infants)'), careNow: num('Childcare paid now a month, local currency, all children'),
+      careFeeIe: num('Irish childcare fee a month per child before the subsidy, EUR (default 800, the median)'), careRules: str('Irish childcare subsidy rules', ['now', 'sep2027']),
+      familyNow: num('Family payments received now a month (child benefit, tax credits paid out), local currency'),
+      housing: str('Rent or mortgage (renters get the Irish Rent Tax Credit)', ['rent', 'own']), housingNow: num('Rent or mortgage now a month, local currency'),
+      housingIe: num('Rent or mortgage in Ireland a month, EUR (default: RTB average for irishArea)'), irishArea: str('Irish county or city for the default rent', IE_RENT.map((c) => c.id)),
+      fx: num('Units of the local currency per EUR (default ECB 11 Nov 2026)'),
+    }, required: ['origin', 'salaryNow', 'salaryIe', 'housingNow'] },
+    run: (a) => {
+      const area = IE_RENT.find((c) => c.id === a.irishArea) ?? IE_RENT[0];
+      const r = computeMove({ origin: a.origin as Origin, usState: a.usState, caProvince: a.caProvince, couple: !!a.couple, salaryNow: a.salaryNow, partnerNow: a.partnerNow, salaryIe: a.salaryIe, partnerIe: a.partnerIe, children: a.children, inCare: a.inCare, careNow: a.careNow, careFeeIe: a.careFeeIe, careRules: a.careRules, familyNow: a.familyNow, housing: a.housing === 'own' ? 'own' : 'rent', housingNow: a.housingNow, housingIe: a.housingIe ?? area.rent, fx: a.fx });
+      return wrap('/tools/ireland-moving-home-calculator/', { ...r, irishArea: area.name, note: 'Monthly figures in EUR (nowLocal in the local currency). Year compared: 2027. Pension contributions, health insurance, commuting and moving costs not included. US state tax per person as a single filer. Estimates, not advice.' },
+        ['https://www.revenue.ie/en/life-events-and-personal-circumstances/moving-to-or-from-ireland/moving-or-returning-to-ireland/split-year-treatment-in-your-year-of-arrival.aspx', 'https://www.esri.ie/publications/the-rtb-rent-index-q1-2026', 'https://www.gov.ie/en/department-of-finance/campaigns/budget/', 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html']);
     },
   },
   {
@@ -957,11 +981,11 @@ export const AGENT_TOOLS: AgentTool[] = [
   },
   {
     name: 'uk_voluntary_ni_from_abroad',
-    description: 'UK State Pension for people living outside the UK: which gap years (2020–21 to 2026–27) can still be filled with voluntary National Insurance after the 6 April 2026 change, at Class 2 (£3.65/wk, years to 2025–26 only) or Class 3 (£18.40/wk), each year’s cost and 5 April deadline, and the State Pension gain (1/35 of £241.30 a week per year, up to 35 years) with payback.',
+    description: 'UK State Pension for people living outside the UK: which gap years (2020–21 to 2026–27) can still be filled with voluntary National Insurance after the 6 April 2026 change, at Class 2 (£3.65/wk, years to 2025–26 only) or Class 3 (£18.40/wk), each year’s cost and 5 April deadline, the State Pension gain (1/35 of £241.30 a week per year, up to 35 years) with payback, the cost and years lost if you wait past 5 April 2027 (2027–28 rates £19.05/£3.80 as announced), and, with residence, whether it rises each year where you live and what NZ Super, the Australian Age Pension income test or Canadian GIS take back.',
     page: '/tools/uk-voluntary-ni-abroad-calculator/',
-    inputSchema: { type: 'object', properties: { qualifyingYears: num('Qualifying years already on the UK National Insurance record'), gapYears: { type: 'array', items: { type: 'number' }, description: 'Tax years to fill, by start year (e.g. 2023 = 2023–24); 2020 to 2026' }, ukResidenceYears: num('Longest stretch living in the UK, years in a row'), ukContributionYears: num('Years of UK contributions paid in total'), workedBeforeLeaving: bool('Worked in the UK immediately before leaving'), workedAbroad: bool('Has worked while abroad'), appliedBefore2026: bool('Applied to pay for 2024–25 or 2025–26 on or before 5 April 2026') }, required: ['qualifyingYears', 'gapYears'] },
-    run: (a) => wrap('/tools/uk-voluntary-ni-abroad-calculator/', computeNi({ qualifyingYears: a.qualifyingYears, gapYears: Array.isArray(a.gapYears) ? a.gapYears : [], ukResidenceYears: a.ukResidenceYears ?? 10, ukContributionYears: a.ukContributionYears ?? 10, workedBeforeLeaving: !!a.workedBeforeLeaving, workedAbroad: !!a.workedAbroad, appliedBefore2026: !!a.appliedBefore2026 }),
-      ['https://www.gov.uk/voluntary-national-insurance-contributions/print', 'https://www.gov.uk/government/publications/voluntary-national-insurance-contributions-for-periods-abroad-from-6-april-2026/voluntary-national-insurance-contributions-abroad-from-6-april-2026', 'https://www.gov.uk/new-state-pension/what-youll-get']),
+    inputSchema: { type: 'object', properties: { qualifyingYears: num('Qualifying years already on the UK National Insurance record'), gapYears: { type: 'array', items: { type: 'number' }, description: 'Tax years to fill, by start year (e.g. 2023 = 2023–24); 2020 to 2026' }, ukResidenceYears: num('Longest stretch living in the UK, years in a row'), ukContributionYears: num('Years of UK contributions paid in total'), workedBeforeLeaving: bool('Worked in the UK immediately before leaving'), workedAbroad: bool('Has worked while abroad'), appliedBefore2026: bool('Applied to pay for 2024–25 or 2025–26 on or before 5 April 2026'), previousClass: num('If applied before 6 April 2026: the class being paid, 2 or 3 (Class 2 payers must also apply for 2026–27 Class 3 by 5 April 2027)', { enum: [2, 3] }), contributionYearsFor10: num('Years of UK-PAID contributions only, for the 10-year test from 2026–27 (no NI credits, no voluntary years abroad); defaults to ukContributionYears'), residence: str('Where the pension will be drawn: decides yearly increases and local deductions (NZ Super, Australian Age Pension income test, Canadian GIS)', ['ie', 'eea', 'ch', 'us', 'gi', 'il', 'ph', 'tr', 'ca', 'au', 'nz', 'other']), auAboveFreeArea: bool('Australia only: income already above the Age Pension income-test free area (default true)') }, required: ['qualifyingYears', 'gapYears'] },
+    run: (a) => { const r = computeNi({ qualifyingYears: a.qualifyingYears, gapYears: Array.isArray(a.gapYears) ? a.gapYears : [], ukResidenceYears: a.ukResidenceYears ?? 10, ukContributionYears: a.ukContributionYears ?? 10, workedBeforeLeaving: !!a.workedBeforeLeaving, workedAbroad: !!a.workedAbroad, appliedBefore2026: !!a.appliedBefore2026, previousClass: a.previousClass === 2 || a.previousClass === 3 ? a.previousClass : undefined, contributionYearsFor10: typeof a.contributionYearsFor10 === 'number' ? a.contributionYearsFor10 : undefined }); return wrap('/tools/uk-voluntary-ni-abroad-calculator/', a.residence ? { ...r, whereYouLive: whereYouLive(r, a.residence as Residence, { auAboveFreeArea: a.auAboveFreeArea !== false }) } : r,
+      ['https://www.gov.uk/voluntary-national-insurance-contributions/print', 'https://www.gov.uk/government/publications/voluntary-national-insurance-contributions-for-periods-abroad-from-6-april-2026/voluntary-national-insurance-contributions-abroad-from-6-april-2026', 'https://www.gov.uk/new-state-pension/what-youll-get', 'https://www.legislation.gov.uk/uksi/2026/294', 'https://www.gov.uk/state-pension-if-you-retire-abroad']); },
   },
   {
     name: 'ireland_etf_exit_tax_lots',

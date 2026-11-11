@@ -10,12 +10,13 @@ import { LANDLORD_PRICE_USD } from './landlord-planner';
 import { PLANNER_PRICE_USD as MOVING_PRICE_USD } from './moving/planner';
 import { CARE_PRICE_USD, CARE_ON_SALE } from './care-planner';
 import { HOMEBUY_PRICE_USD, HOMEBUY_ON_SALE } from './home-buying-planner';
+import { UKSPA_PRICE_USD, UKSPA_ON_SALE } from './uk-sp-abroad-planner';
 
 // The wedding planner and ETF tracker pages hard-code $15 in their Product schema; keep these in step.
 export const WEDDING_PRICE_USD = 15;
 export const ETF_PRICE_USD = 15;
 
-export type PlannerId = 'wedding' | 'leave' | 'moving' | 'etf' | 'retirement' | 'landlord' | 'retirementIntl' | 'homebuy' | 'care';
+export type PlannerId = 'wedding' | 'leave' | 'moving' | 'etf' | 'retirement' | 'landlord' | 'retirementIntl' | 'homebuy' | 'care' | 'ukspa';
 
 export interface Planner {
   id: PlannerId;
@@ -95,6 +96,13 @@ export const PLANNERS: Record<PlannerId, Planner> = {
     pitch: 'The cash you need on the day with your country’s purchase tax and first-buyer relief, a month-by-month deposit plan, what lenders allow, and owning vs renting over 30 years.',
     thumb: { src: '/img/products/inside/home-buying-planner-1-sm.jpg', w: 800, h: 586, alt: 'Home Buying Planner dashboard' },
   },
+  ukspa: {
+    id: 'ukspa', name: 'UK State Pension from Abroad Planner', url: '/uk-state-pension-abroad-planner/', price: UKSPA_PRICE_USD, onSale: UKSPA_ON_SALE,
+    // Anyone with UK years who lives abroad: shown wherever the calculator or the article is, whatever the country.
+    countries: ['GB', 'IE', 'US', 'CA', 'AU', 'NZ', 'CH'], editionsNote: 'for anyone with UK years who lives abroad',
+    pitch: 'Your UK National Insurance record year by year: which missing years to buy, Class 2 or 3, each cost and deadline, what they add where you live and the cost of waiting past 5 April 2027.',
+    thumb: { src: '/img/products/uk-sp-abroad-planner.jpg', w: 1200, h: 1200, alt: 'UK State Pension from Abroad Planner: the worked example' },
+  },
 };
 
 /** The 2-3 planners shown on a country's hubs (REDESIGN-PLAN v2 §10). */
@@ -138,7 +146,8 @@ const TOOL_PLANNER: Record<string, PlannerId | PlannerId[]> = {
   'ireland-investment-account-calculator': 'etf',
   'ireland-overpay-mortgage-or-invest-calculator': 'etf',
   'ireland-etf-exit-tax-calculator': 'etf',
-  'uk-voluntary-ni-abroad-calculator': 'moving',
+  // The planner is skipped while it is not on sale (onSale false), so the moving planner shows until launch.
+  'uk-voluntary-ni-abroad-calculator': ['ukspa', 'moving'],
   'medicaid-spend-down-calculator': 'care',
   'uk-care-home-fees-calculator': 'care',
   'ireland-fair-deal-calculator': 'care',
@@ -157,6 +166,7 @@ const TOOL_PLANNER: Record<string, PlannerId | PlannerId[]> = {
   'australia-retirement-calculator': 'retirementIntl',
   // Busy general pages (Cloudflare 30-day loads, 10 Nov): savings growth -> the retirement planner for the reader's country.
   'compound-interest-calculator': ['retirement', 'retirementIntl'],
+  'fire-calculator': ['retirement', 'retirementIntl'],
 };
 
 export function plannerForTool(slug: string, cc: string): Planner | null {

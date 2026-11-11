@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeNi, weeklyRate, deadlineFor, pensionFor, assessYear, EARLIEST, type NiInput } from './uk-voluntary-ni';
+import { computeNi, weeklyRate, deadlineFor, pensionFor, assessYear, whereYouLive, EARLIEST, type NiInput } from './uk-voluntary-ni';
 
 const base: NiInput = { qualifyingYears: 20, gapYears: [], ukResidenceYears: 12, ukContributionYears: 12, workedBeforeLeaving: false, workedAbroad: false, appliedBefore2026: false };
 
@@ -58,5 +58,40 @@ describe('uk-voluntary-ni: gov.uk rules (read 2026-11-03)', () => {
     expect(r.pensionBefore).toBe(0);
     expect(r.pensionAfter).toBeCloseTo(68.94, 2);
     expect(r.note).toContain('unlock');
+  });
+});
+
+describe('uk-voluntary-ni: SI 2026/294 transitional rule and 2027–28 (facts re-checked 2026-11-12)', () => {
+  const five = { ...base, ukResidenceYears: 5, ukContributionYears: 5, appliedBefore2026: true };
+  it('former Class 3 payers need no new application; former Class 2 payers must apply for 2026–27 Class 3 by 5 April 2027', () => {
+    expect(assessYear(2026, { ...five, previousClass: 3 }).reason).toContain('no new application');
+    expect(assessYear(2026, { ...five, previousClass: 2 }).reason).toContain('apply for 2026–27 Class 3 by 5 April 2027');
+  });
+  it('the 10-year test counts UK-paid contributions only: 12 qualifying years with 6 paid is not enough', () => {
+    const r = assessYear(2026, { ...base, ukResidenceYears: 4, ukContributionYears: 12, contributionYearsFor10: 6 });
+    expect(r.payable).toBe(false);
+  });
+  it('2027–28 rates: Class 3 £19.05, Class 2 £3.80; 2026–27 Class 3 stays £18.40 inside the 2-year window', () => {
+    expect(weeklyRate(3, 2026, 2027)).toBe(18.4);
+    expect(weeklyRate(3, 2024, 2027)).toBe(19.05);
+    expect(weeklyRate(2, 2025, 2027)).toBe(3.8);
+  });
+  it('waiting past 5 April 2027 loses 2020–21 and costs more for the rest', () => {
+    const r = computeNi({ ...base, gapYears: [2020, 2023, 2025] });
+    expect(r.waitAfterApril2027.lostYears).toEqual([2020]);
+    expect(r.waitAfterApril2027.extraCost).toBeGreaterThan(0);
+  });
+  it('a transitional-only 2026–27 year is lost after 5 April 2027', () => {
+    const r = computeNi({ ...five, previousClass: 3, gapYears: [2026] });
+    expect(r.waitAfterApril2027.lostYears).toEqual([2026]);
+  });
+  it('where you live: frozen in Canada, Australia and New Zealand; Australia keeps about half above the free area; NZ keeps voluntary years in full', () => {
+    const r = computeNi({ ...base, gapYears: [2025] });
+    expect(whereYouLive(r, 'ie').uprated).toBe(true);
+    expect(whereYouLive(r, 'ca').uprated).toBe(false);
+    expect(whereYouLive(r, 'au').keepShare).toBe(0.5);
+    expect(whereYouLive(r, 'au', { auAboveFreeArea: false }).keepShare).toBe(1);
+    expect(whereYouLive(r, 'nz').keepShare).toBe(1);
+    expect(whereYouLive(r, 'nz').uprated).toBe(false);
   });
 });
