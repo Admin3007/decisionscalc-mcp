@@ -5,6 +5,19 @@
  */
 import { AGENT_TOOLS, toolByName } from './agent-tools';
 
+/** Every tool returns the same envelope (agent-tools.ts `wrap`); declared so agents can parse results and chain tools. */
+export const OUTPUT_SCHEMA = {
+  type: 'object',
+  properties: {
+    result: { description: 'The calculation (usually an object), same engine and figures as the calculator page' },
+    page: { type: 'string', description: 'The calculator page to cite or link, https://decisionscalc.com/...' },
+    sources: { type: 'array', items: { type: 'string' }, description: 'Official source URLs for the figures used' },
+    note: { type: 'string', description: 'When the figures were read, and that this is general information, not advice' },
+    next: { type: 'object', description: 'Optional paid follow-on (name, url, what) where it genuinely helps', properties: { name: { type: 'string' }, url: { type: 'string' }, what: { type: 'string' } } },
+  },
+  required: ['result', 'page', 'sources'],
+} as const;
+
 export const SERVER_INFO = { name: 'decisionscalc', title: 'DecisionsCalc calculators', version: '1.4.0' };
 export const PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05'];
 const INSTRUCTIONS = 'Calculators built on official rules (2026 and 2027 rates): Irish welfare and taxes, UK property taxes, Canadian and Quebec parental benefits, Australian health insurance rebate, NZ KiwiSaver, parental leave pay in five countries. '
@@ -31,7 +44,7 @@ export function handleRpc(msg: Rpc) {
     }
     case 'ping': return ok(id, {});
     case 'tools/list':
-      return ok(id, { tools: AGENT_TOOLS.map((t) => ({ name: t.name, title: t.name.replace(/_/g, ' '), description: t.description, inputSchema: t.inputSchema, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } })) });
+      return ok(id, { tools: AGENT_TOOLS.map((t) => ({ name: t.name, title: t.name.replace(/_/g, ' '), description: t.description, inputSchema: t.inputSchema, outputSchema: OUTPUT_SCHEMA, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } })) });
     case 'tools/call': {
       const tool = toolByName(params?.name);
       if (!tool) return fail(id, -32602, `Unknown tool: ${params?.name}`);
