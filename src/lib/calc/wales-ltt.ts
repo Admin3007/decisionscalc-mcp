@@ -11,8 +11,8 @@ export type LttBuyerType = 'standard' | 'additional';
 export interface LttRow { label: string; rate: number; taxable: number; tax: number }
 export interface LttResult { total: number; effectiveRate: number; rows: LttRow[] }
 
-interface Band { from: number; to: number; rate: number }
-const MAIN: Band[] = [
+export interface Band { from: number; to: number; rate: number }
+export const MAIN: Band[] = [
   { from: 0, to: 225000, rate: 0 },
   { from: 225000, to: 400000, rate: 6 },
   { from: 400000, to: 750000, rate: 7.5 },

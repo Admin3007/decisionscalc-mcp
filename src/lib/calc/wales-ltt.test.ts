@@ -51,3 +51,14 @@ describe('Wales LTT (2026/27)', () => {
     });
   });
 });
+
+// Overhaul D2: the Welsh Government's own worked examples (gov.wales "Land Transaction Tax rates and bands",
+// read 8 Nov 2026). Only the two on today's rates; the others use rates from before 10 Oct 2022 / 11 Dec 2024.
+describe('Wales LTT: gov.wales worked examples', () => {
+  it('gov.wales example: £280,000 house, 0% on £225,000 + 6% on £55,000 = £3,300', () => {
+    expect(computeLtt(280000, 'standard').total).toBe(3300);
+  });
+  it('gov.wales example: £260,000 second home, 5% on £180,000 + 8.5% on £70,000 + 10% on £10,000 = £15,950', () => {
+    expect(computeLtt(260000, 'additional').total).toBe(15950);
+  });
+});

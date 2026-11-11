@@ -17,7 +17,7 @@ export interface SdltResult {
 }
 
 // Standard residential bands (England & NI, 2026/27).
-const STANDARD: SdltBand[] = [
+export const STANDARD: SdltBand[] = [
   { from: 0, to: 125000, rate: 0 },
   { from: 125000, to: 250000, rate: 2 },
   { from: 250000, to: 925000, rate: 5 },
@@ -26,7 +26,7 @@ const STANDARD: SdltBand[] = [
 ];
 
 // First-time buyer bands (only if price ≤ £500,000; otherwise standard applies).
-const FTB: SdltBand[] = [
+export const FTB: SdltBand[] = [
   { from: 0, to: 300000, rate: 0 },
   { from: 300000, to: 500000, rate: 5 },
 ];

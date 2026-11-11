@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeMff, ratesFor, PHASES, PAY_CAP, SCHEME_START_YEAR } from './ie-mff';
+import { computeMff, ratesFor, PHASES, PAY_CAP, SCHEME_START_YEAR, compareWithPension } from './ie-mff';
 
 describe('MyFutureFund (Citizens Information, read 2026-11-02)', () => {
   it('pins the official schedule', () => {
@@ -43,5 +43,35 @@ describe('MyFutureFund (Citizens Information, read 2026-11-02)', () => {
   it('bad input never produces NaN', () => {
     const r = computeMff({ age: NaN, retireAge: NaN, salary: NaN, payGrowth: NaN, investReturn: NaN, charges: NaN });
     expect(Number.isFinite(r.pot)).toBe(true);
+  });
+});
+
+describe('MyFutureFund or a pension with tax relief, same take-home cost', () => {
+  it('€35,000 in 2026, 20% relief, no employer money: MyFutureFund €1,225 in vs €656.25', () => {
+    const r = compareWithPension({ salary: 35000, marginalRate: 0.2, otherEmployerPct: 0 });
+    expect(r.takeHomeCost).toBe(525);
+    expect(r.mff.total).toBe(1225); // 525 + 525 + 175
+    expect(r.mff.perEuro).toBe(2.33);
+    expect(r.other.you).toBe(656.25); // 525 / 0.8
+    expect(r.other.perEuro).toBe(1.25);
+    expect(r.better).toBe('mff');
+    expect(r.employerToMatch).toBe(568.75);
+    expect(r.employerToMatchPct).toBe(1.63);
+  });
+  it('€60,000 in 2026 at 40%: the other pension needs 1% of salary from the employer to match', () => {
+    const r = compareWithPension({ salary: 60000, marginalRate: 0.4, otherEmployerPct: 0 });
+    expect(r.mff.total).toBe(2100);
+    expect(r.other.you).toBe(1500);
+    expect(r.employerToMatch).toBe(600);
+    expect(r.employerToMatchPct).toBe(1);
+    expect(compareWithPension({ salary: 60000, marginalRate: 0.4, otherEmployerPct: 1.5 }).better).toBe('other');
+  });
+  it('from 2035 (6%) the employer match needed is 6.5% (20%) and 4% (40%) of salary', () => {
+    expect(compareWithPension({ salary: 35000, marginalRate: 0.2, otherEmployerPct: 0, calendarYear: 2035 }).employerToMatchPct).toBe(6.5);
+    expect(compareWithPension({ salary: 60000, marginalRate: 0.4, otherEmployerPct: 0, calendarYear: 2035 }).employerToMatchPct).toBe(4);
+  });
+  it('above €80,000 MyFutureFund stops at the cap; the comparison uses the capped amounts', () => {
+    const r = compareWithPension({ salary: 100000, marginalRate: 0.4, otherEmployerPct: 0 });
+    expect(r.mff.you).toBe(1200);
   });
 });

@@ -25,6 +25,8 @@ export interface AuHealthInput {
   premium: number;       // annual hospital premium (A$)
   hasCover: boolean;     // holds private hospital cover?
   children: number;      // dependent children
+  /** Years after age 30 without hospital cover (Lifetime Health Cover loading, overhaul C6). */
+  lhcYears?: number;
 }
 
 export interface AuHealthResult {
@@ -35,6 +37,11 @@ export interface AuHealthResult {
   netPremium: number;    // premium - rebate (if cover) else 0
   mlsRate: number;       // %
   mlsAmount: number;     // $ payable if NOT holding cover
+  /** Lifetime Health Cover: 2% of the premium per year without cover after 30, at most 70%. The rebate does not apply to it. */
+  lhcLoadingPct: number;
+  lhcLoadingAmount: number;
+  /** Net premium after rebate plus LHC loading: the real yearly cost of cover. */
+  costOfCover: number;
 }
 
 const SINGLE = [105000, 123000, 164000];
@@ -70,5 +77,9 @@ export function computeAuHealth(input: AuHealthInput): AuHealthResult {
   const mlsRate = MLS[tier];
   const mlsAmount = input.hasCover ? 0 : Math.round(income * (mlsRate / 100));
 
-  return { tier, tierLabel: TIER_LABEL[tier], rebatePct, rebateAmount, netPremium, mlsRate, mlsAmount };
+  const lhcLoadingPct = Math.min(70, 2 * Math.max(0, Math.floor(Number(input.lhcYears) || 0)));
+  const lhcLoadingAmount = Math.round(premium * (lhcLoadingPct / 100));
+  const costOfCover = Math.round(premium - Math.round(premium * (rebatePct / 100)) + lhcLoadingAmount);
+
+  return { tier, tierLabel: TIER_LABEL[tier], rebatePct, rebateAmount, netPremium, mlsRate, mlsAmount, lhcLoadingPct, lhcLoadingAmount, costOfCover };
 }

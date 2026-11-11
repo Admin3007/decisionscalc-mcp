@@ -100,3 +100,25 @@ describe('AU health rebate + MLS (rebate from 1 April 2026; 2026–27 thresholds
     });
   });
 });
+
+describe('Lifetime Health Cover loading (overhaul C6)', () => {
+  const base = { income: 120000, family: 'single' as const, age: 'under65' as const, premium: 1500, hasCover: false, children: 0 };
+  it('2% a year after 30, capped at 70%, not reduced by the rebate', () => {
+    expect(computeAuHealth({ ...base, lhcYears: 0 }).lhcLoadingPct).toBe(0);
+    expect(computeAuHealth({ ...base, lhcYears: 10 }).lhcLoadingPct).toBe(20);
+    expect(computeAuHealth({ ...base, lhcYears: 40 }).lhcLoadingPct).toBe(70);
+    const r = computeAuHealth({ ...base, lhcYears: 10 });
+    expect(r.lhcLoadingAmount).toBe(300);
+    expect(r.costOfCover).toBe(1500 - Math.round(1500 * r.rebatePct / 100) + 300);
+  });
+});
+
+// Overhaul D2: the ATO's own worked example ("Medicare levy surcharge income, thresholds and rates", read 8 Nov 2026).
+describe('ATO worked example', () => {
+  it('ATO example (Tom, 2026-27): single, no hospital cover, $117,000 income for MLS purposes, Tier 1 at 1% = $1,170', () => {
+    const r = computeAuHealth({ income: 117000, family: 'single', age: 'under65', premium: 0, hasCover: false, children: 0 });
+    expect(r.tier).toBe(1);
+    expect(r.mlsRate).toBe(1);
+    expect(r.mlsAmount).toBe(1170);
+  });
+});

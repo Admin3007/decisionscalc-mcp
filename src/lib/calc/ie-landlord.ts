@@ -12,8 +12,9 @@
  *    €100,000. Income tax bands and credits for 2026 and 2027 (Budget 2027): ./ie-budget-2027.ts.
  *  - citizensinformation.ie "Social insurance" + gov.ie "PRSI Class K Rates": an employee under 66 whose
  *    unearned income is over €5,000 pays PRSI on all of it at 4.2% to 30 September 2026, 4.35% from
- *    1 October 2026 (4.5% from 1 October 2027 under the PRSI roadmap); prorated by month for the tax year.
- * Not modelled: Rent-a-Room relief (a separate exemption up to €14,000, €16,000 from 2027), pre-letting
+ *    1 October 2026 (4.5% from 1 October 2027 under the PRSI roadmap); gov.ie states 4.235% for 2026 self-assessed
+ *    income, used as published; later years are prorated by month until gov.ie publishes the year rate.
+ * Not modelled here: Rent-a-Room relief (a separate exemption up to €14,000, €16,000 from 2027: ./ie-rent-a-room.ts), pre-letting
  * expenses, the retrofitting deduction, non-resident landlord withholding, companies.
  */
 import { RULES, uscFor, type Year } from './ie-budget-2027';
@@ -74,8 +75,13 @@ const n = (v: unknown) => (Number.isFinite(Number(v)) ? Math.max(0, Number(v)) :
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
 /** PRSI rate for the year, prorated by month (Class K/S change each 1 October). */
+/**
+ * gov.ie 'PRSI Class K Rates' publishes the rate for self-assessed income of the whole tax year: 4.235% for 2026
+ * (read 7 Nov 2026). Where gov.ie publishes one, use it; otherwise prorate the in-year rates by month.
+ */
+const PUBLISHED_UNEARNED_RATE: Partial<Record<Year, number>> = { 2026: 0.04235 };
 export function unearnedPrsiRate(year: Year): number {
-  return RULES[year].prsi.reduce((s, [months, rate]) => s + rate * months / 12, 0);
+  return PUBLISHED_UNEARNED_RATE[year] ?? RULES[year].prsi.reduce((s, [months, rate]) => s + rate * months / 12, 0);
 }
 
 function taxOn(i: LandlordInput, profit: number) {

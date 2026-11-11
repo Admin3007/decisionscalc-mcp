@@ -100,3 +100,13 @@ describe('KiwiSaver (ird.govt.nz, read 2026-11-03)', () => {
     expect(Number.isFinite(r.todaysDollars)).toBe(true);
   });
 });
+
+// Overhaul D2: Inland Revenue "Getting the KiwiSaver government contribution" (3 Jun 2026, read 8 Nov 2026):
+// 25 cents for every dollar you put in, up to $260.72, which takes $1,042.86 of your own contributions.
+describe('IRD government contribution', () => {
+  it('IRD: $1,042.86 of contributions earns the maximum $260.72; half that earns half', () => {
+    expect(governmentContribution(1042.86, 60000, 35)).toBeCloseTo(260.72, 1);
+    expect(governmentContribution(5000, 60000, 35)).toBe(260.72);
+    expect(governmentContribution(521.43, 60000, 35)).toBeCloseTo(130.36, 2);
+  });
+});

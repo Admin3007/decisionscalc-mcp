@@ -77,3 +77,52 @@ export function computeMff(i: MffInput): MffResult {
     matchPerEuro: you > 0 ? (emp + st) / you : 0,
   };
 }
+
+/**
+ * MyFutureFund or a pension with tax relief (PRSA, occupational scheme, PEPP), for the same take-home cost.
+ * MyFutureFund contributions get no tax relief; the State adds €1 for every €3 you pay (Citizens Information).
+ * Personal pension contributions get income tax relief at your marginal rate (20% or 40%); USC and PRSI are not relieved,
+ * and the 40% rate applies only to income in the higher band. Employers must contribute to MyFutureFund but not to a PRSA.
+ */
+export interface CompareInput {
+  salary: number;
+  /** Rate at which your pension contributions would get relief: 0.2 or 0.4. */
+  marginalRate: number;
+  /** Employer contribution to the other pension, % of salary. */
+  otherEmployerPct: number;
+  calendarYear?: number;
+}
+export interface CompareResult {
+  rates: (typeof PHASES)[number];
+  /** What you pay from take-home pay (MyFutureFund has no relief, so this is also its gross). */
+  takeHomeCost: number;
+  mff: { you: number; employer: number; state: number; total: number; perEuro: number };
+  /** The other pension with the same take-home cost. */
+  other: { you: number; relief: number; employer: number; total: number; perEuro: number };
+  /** Employer contribution the other pension needs to match MyFutureFund, € and % of salary. */
+  employerToMatch: number;
+  employerToMatchPct: number;
+  better: 'mff' | 'other' | 'equal';
+}
+
+export function compareWithPension(i: CompareInput): CompareResult {
+  const year = Math.max(SCHEME_START_YEAR, Math.floor(n(i.calendarYear, SCHEME_START_YEAR)));
+  const rates = ratesFor(year);
+  const salary = Math.max(0, n(i.salary));
+  const base = Math.min(salary, PAY_CAP);
+  const t = Math.min(0.4, Math.max(0, n(i.marginalRate, 0.2)));
+  const you = base * rates.employee, employer = base * rates.employer, state = base * rates.state;
+  const mffTotal = you + employer + state;
+  const gross = you / (1 - t);
+  const otherEmployer = (salary * Math.max(0, n(i.otherEmployerPct))) / 100;
+  const otherTotal = gross + otherEmployer;
+  const employerToMatch = Math.max(0, mffTotal - gross);
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+  return {
+    rates, takeHomeCost: r2(you),
+    mff: { you: r2(you), employer: r2(employer), state: r2(state), total: r2(mffTotal), perEuro: you > 0 ? r2(mffTotal / you) : 0 },
+    other: { you: r2(gross), relief: r2(gross - you), employer: r2(otherEmployer), total: r2(otherTotal), perEuro: you > 0 ? r2(otherTotal / you) : 0 },
+    employerToMatch: r2(employerToMatch), employerToMatchPct: salary > 0 ? Math.round((employerToMatch / salary) * 10000) / 100 : 0,
+    better: Math.abs(otherTotal - mffTotal) < 0.5 ? 'equal' : otherTotal > mffTotal ? 'other' : 'mff',
+  };
+}

@@ -18,8 +18,8 @@ describe('ie-landlord: Revenue rules (read 2026-11-03)', () => {
     expect(r.incomeTax).toBe(8000);                       // all of it in the 40% band
     expect(r.rprir).toBe(1000);
     expect(r.usc).toBeCloseTo((70044 - 60000) * 0.03 + (80000 - 70044) * 0.08, 2);
-    expect(unearnedPrsiRate(2026)).toBeCloseTo(0.75 * 0.042 + 0.25 * 0.0435, 10);
-    expect(r.prsi).toBeCloseTo(20000 * (0.75 * 0.042 + 0.25 * 0.0435), 2);
+    expect(unearnedPrsiRate(2026)).toBeCloseTo(0.04235, 10); // gov.ie published rate for 2026
+    expect(r.prsi).toBeCloseTo(20000 * 0.04235, 2);
     expect(r.totalTax).toBeCloseTo(8000 - 1000 + r.usc + r.prsi, 2);
   });
 

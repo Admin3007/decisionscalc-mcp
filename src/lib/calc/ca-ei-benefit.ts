@@ -76,3 +76,30 @@ export function computeCaEi(input: CaEiInput): CaEiResult {
     extendedParental: { weeklyAmount: w33.amount, weeks: extWeeks, total: w33.amount * extWeeks, capped: w33.capped },
   };
 }
+
+/**
+ * Both parents, standard vs extended (overhaul C4). The birth parent takes the 15 maternity weeks; the parental
+ * weeks are shared (standard: 40 in all, 35 per parent at 55%; extended: 69 in all, 61 per parent at 33%). The
+ * partner's weeks are what they take; the birth parent takes the rest up to their own limit. Same steady-earnings
+ * assumption as computeCaEi; before tax; waiting week not deducted (as on the rest of the page).
+ */
+export interface CaCoupleOption { birthWeeks: number; partnerWeeks: number; unused: number; total: number; weeksOff: number; birthWeekly: number; partnerWeekly: number; }
+export function compareCaCouple(birthIncome: number, partnerIncome: number, partnerStdWeeks: number, partnerExtWeeks: number): { standard: CaCoupleOption; extended: CaCoupleOption } {
+  const a = computeCaEi({ annualIncome: birthIncome, standardParentalWeeks: 0, extendedParentalWeeks: 0, includeMaternity: true });
+  const b = computeCaEi({ annualIncome: partnerIncome, standardParentalWeeks: 0, extendedParentalWeeks: 0, includeMaternity: false });
+  const opt = (shared: number, perParent: number, partnerWeeksIn: number, wA: number, wB: number): CaCoupleOption => {
+    const partnerWeeks = Math.max(0, Math.min(perParent, Math.round(partnerWeeksIn || 0)));
+    const birthWeeks = Math.max(0, Math.min(perParent, shared - partnerWeeks));
+    const mat = EI_2026.maternityWeeks * a.maternity.weeklyAmount;
+    return {
+      birthWeeks, partnerWeeks, unused: shared - birthWeeks - partnerWeeks,
+      total: mat + birthWeeks * wA + partnerWeeks * wB,
+      weeksOff: EI_2026.maternityWeeks + birthWeeks + partnerWeeks,
+      birthWeekly: wA, partnerWeekly: wB,
+    };
+  };
+  return {
+    standard: opt(EI_2026.standardParentalMaxWeeks, EI_2026.standardParentalPerParent, partnerStdWeeks, a.standardParental.weeklyAmount, b.standardParental.weeklyAmount),
+    extended: opt(EI_2026.extendedParentalMaxWeeks, EI_2026.extendedParentalPerParent, partnerExtWeeks, a.extendedParental.weeklyAmount, b.extendedParental.weeklyAmount),
+  };
+}

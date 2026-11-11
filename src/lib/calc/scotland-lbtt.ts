@@ -10,8 +10,8 @@ export type LbttBuyerType = 'standard' | 'firstTimeBuyer' | 'additional';
 export interface LbttRow { label: string; rate: number; taxable: number; tax: number }
 export interface LbttResult { total: number; effectiveRate: number; rows: LbttRow[] }
 
-interface Band { from: number; to: number; rate: number }
-const STANDARD: Band[] = [
+export interface Band { from: number; to: number; rate: number }
+export const STANDARD: Band[] = [
   { from: 0, to: 145000, rate: 0 },
   { from: 145000, to: 250000, rate: 2 },
   { from: 250000, to: 325000, rate: 5 },
@@ -19,7 +19,7 @@ const STANDARD: Band[] = [
   { from: 750000, to: Infinity, rate: 12 },
 ];
 // First-time buyer relief: nil-rate band raised to £175,000.
-const FTB: Band[] = [
+export const FTB: Band[] = [
   { from: 0, to: 175000, rate: 0 },
   { from: 175000, to: 250000, rate: 2 },
   { from: 250000, to: 325000, rate: 5 },

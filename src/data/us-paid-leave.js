@@ -73,3 +73,23 @@ export function usLeaveFor(code, salary, { birthParent = true, weeksOff = 52 } =
   const total = recPaid * recWeekly + (paidWeeks - recPaid) * weekly;
   return { state: s, weeklyPay: w, weekly, recWeekly, wait, recWeeks: recPaid, bondWeeks: paidWeeks - recPaid, paidWeeks, total, normal: w * weeksOff, gap: w * weeksOff - total, replacement: w > 0 ? weekly / w : 0 };
 }
+
+/**
+ * State pages (overhaul C5): URL slug, plain name and the official pages each state's figures were read on
+ * (3 Nov 2026). Must match RULES.us.sources in scripts/gen-leave-planner.mjs (contract test).
+ */
+export const US_STATE_PAGES = {
+  CA: { slug: 'california', name: 'California', sources: [['California EDD: Paid Family Leave benefit amounts (90% / $1,127 / 70%, up to $1,765), 8 weeks', 'https://edd.ca.gov/en/disability/Calculating_PFL_Benefit_Payment_Amounts/']] },
+  CO: { slug: 'colorado', name: 'Colorado', sources: [['Colorado FAMLI: new state average weekly wage $1,608.91, maximum $1,448.02 from 1 July 2026', 'https://famli.colorado.gov/news-article/colorados-new-average-weekly-wage-and-how-it-affects-famli-claims-0']] },
+  CT: { slug: 'connecticut', name: 'Connecticut', sources: [['CT Paid Leave: 95% up to 40 × minimum wage, 60% above, maximum $1,016.40 (2026)', 'https://www.ctpaidleave.org/claims/before-you-apply']] },
+  DC: { slug: 'district-of-columbia', name: 'District of Columbia', sources: [['DC Paid Family Leave: 2026 program changes, maximum $1,100 from 1 October 2026', 'https://dcpaidfamilyleave.dc.gov/program-updates/']] },
+  DE: { slug: 'delaware', name: 'Delaware', sources: [['Delaware Paid Leave: 80% up to $900, 12 weeks parental leave', 'https://labor.delaware.gov/delaware-paid-leave/']] },
+  MA: { slug: 'massachusetts', name: 'Massachusetts', sources: [['Massachusetts PFML: how weekly benefit amounts are calculated (80% / 50%, SAWW and maximum by year)', 'https://www.mass.gov/info-details/how-pfml-weekly-benefit-amounts-are-calculated-andor-changed'], ['Massachusetts PFML: moving from medical to bonding leave (no second waiting period)', 'https://www.mass.gov/info-details/pfml-transitioning-from-medical-leave-to-family-leave-to-bond-with-a-child']] },
+  ME: { slug: 'maine', name: 'Maine', sources: [['Maine PFML: employee FAQ (12 weeks, waiting period for medical leave only)', 'https://www.maine.gov/paidleave/docs/2026/employees/faq/employeeFAQenglish.pdf'], ['Maine PFML: estimated premium and benefit chart (benefit capped at the state average weekly wage, $1,250 rounded)', 'https://www.maine.gov/paidleave/docs/2026/employees/pfmlpremiumbenefitchart.pdf']] },
+  MN: { slug: 'minnesota', name: 'Minnesota', sources: [['Minnesota Paid Leave: estimate your payments (90% / 66% / 55%)', 'https://pl.mn.gov/resources/calculators/estimate-your-payments']] },
+  NJ: { slug: 'new-jersey', name: 'New Jersey', sources: [['New Jersey: Family Leave Insurance, 85% up to $1,119 (2026), 12 weeks', 'https://www.nj.gov/labor/myleavebenefits/worker/fli/'], ['New Jersey: pregnancy and temporary disability (4 weeks before, 6 after)', 'https://www.nj.gov/labor/myleavebenefits/worker/maternity/']] },
+  NY: { slug: 'new-york', name: 'New York', sources: [['New York Paid Family Leave 2026: 67% up to $1,228.53, 12 weeks', 'https://paidfamilyleave.ny.gov/2026'], ['New York disability benefits: 50% up to $170, pregnancy 4 weeks before and 6 after', 'https://www.wcb.ny.gov/content/main/DisabilityBenefits/employee-eligibility-benefits.jsp']] },
+  OR: { slug: 'oregon', name: 'Oregon', sources: [['Oregon: minimum and maximum weekly benefit amounts from 28 June 2026 ($70.51 / $1,692.16)', 'https://www.oregon.gov/employ/NewsAndMedia/Documents/2026-05-29-Minimum-Maximum-Weekly-Benefit-Amounts.pdf']] },
+  RI: { slug: 'rhode-island', name: 'Rhode Island', sources: [['Rhode Island TDI/TCI FAQ: maximum $1,150 from 1 July 2026, 4.62% of the highest quarter', 'https://dlt.ri.gov/individuals/temporary-disability-caregiver-insurance/claimants/tditci-frequently-asked-questions']] },
+  WA: { slug: 'washington', name: 'Washington', sources: [['Washington ESD: average wage and maximum benefit for 2027 ($1,727) and 2026 ($1,647)', 'https://esd.wa.gov/about-us/news-release/2026/new-average-annual-wage-estimates-adjust-unemployment-insurance-and-paid-leave-benefits'], ['Washington Paid Leave: new parents (no waiting week for birth or bonding, 16-18 weeks)', 'https://paidleave.wa.gov/help-center/individuals-and-families/new-parents/']] },
+};

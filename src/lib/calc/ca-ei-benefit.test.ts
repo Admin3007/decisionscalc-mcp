@@ -52,3 +52,13 @@ describe('Canada EI maternity & parental benefits (2026)', () => {
     expect(eiWeekly(1000, 0.55, 729)).toEqual({ amount: 550, capped: false });
   });
 });
+
+// Overhaul D2: canada.ca "EI maternity and parental benefits: How much you could receive" and "2026 maximum
+// insurable earnings" (read 8 Nov 2026): MIE $68,900; maximum $729 a week (55%) and $437 a week (extended, 33%).
+describe('canada.ca 2026 maximums', () => {
+  it('canada.ca 2026: maximum insurable earnings $68,900, maximum weekly benefit $729 (55%) and $437 (extended 33%)', () => {
+    expect([EI_2026.mie, EI_2026.maxWeekly55, EI_2026.maxWeekly33]).toEqual([68900, 729, 437]);
+    expect(eiWeekly(90000 / 52, 0.55, EI_2026.maxWeekly55)).toMatchObject({ amount: 729, capped: true });
+    expect(eiWeekly(90000 / 52, 0.33, EI_2026.maxWeekly33)).toMatchObject({ amount: 437, capped: true });
+  });
+});
