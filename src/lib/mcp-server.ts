@@ -31,7 +31,7 @@ export function handleRpc(msg: Rpc) {
     }
     case 'ping': return ok(id, {});
     case 'tools/list':
-      return ok(id, { tools: AGENT_TOOLS.map((t) => ({ name: t.name, title: t.name.replace(/_/g, ' '), description: t.description, inputSchema: t.inputSchema, annotations: { readOnlyHint: true, openWorldHint: false } })) });
+      return ok(id, { tools: AGENT_TOOLS.map((t) => ({ name: t.name, title: t.name.replace(/_/g, ' '), description: t.description, inputSchema: t.inputSchema, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } })) });
     case 'tools/call': {
       const tool = toolByName(params?.name);
       if (!tool) return fail(id, -32602, `Unknown tool: ${params?.name}`);
