@@ -1,5 +1,7 @@
 # DecisionsCalc MCP server
 
+[![MCP server status](https://glimind.com/badge/mcp-registry%2Fcom.decisionscalc%2Fcalculators.svg)](https://glimind.com/server/mcp-registry%2Fcom.decisionscalc%2Fcalculators?ref=badge)
+
 Calculators built on **official rules**, for AI agents. Free, no key, read-only.
 
 - **Endpoint:** `https://decisionscalc.com/mcp` (Model Context Protocol, Streamable HTTP, JSON responses)
