@@ -22,6 +22,7 @@ import { computeHomes } from './calc/ie-money-homes';
 import { computeIia } from './calc/ie-investment-account';
 import { computeOverpay } from './calc/ie-overpay';
 import { computePcp } from './calc/ie-pcp';
+import { computeFarm, type Relationship } from './calc/ie-farm-transfer';
 import { computeMove, IE_RENT, type Origin } from './calc/ie-moving-home';
 import { box3 as nlBox3, BOX3_SOURCES } from './calc/nl-box3';
 import { paymentsOnAccount, POA_SOURCES } from './calc/uk-payments-on-account';
@@ -354,6 +355,23 @@ export const AGENT_TOOLS: AgentTool[] = [
       return wrap('/tools/ireland-moving-home-calculator/', { ...r, irishArea: area.name, note: 'Monthly figures in EUR (nowLocal in the local currency). Year compared: 2027. Pension contributions, health insurance, commuting and moving costs not included. US state tax per person as a single filer. Estimates, not advice.' },
         ['https://www.revenue.ie/en/life-events-and-personal-circumstances/moving-to-or-from-ireland/moving-or-returning-to-ireland/split-year-treatment-in-your-year-of-arrival.aspx', 'https://www.esri.ie/publications/the-rtb-rent-index-q1-2026', 'https://www.gov.ie/en/department-of-finance/campaigns/budget/', 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html']);
     },
+  },
+  {
+    name: 'ireland_farm_transfer_tax',
+    description: 'Ireland: tax on passing a farm by gift or inheritance, with and without the farm reliefs. CAT 33% over the group threshold (Group A €420,000, B €44,000, C €22,000 from 7 Oct 2026, aggregated since 1991; €3,000 small gift exemption) with agricultural relief (90% off agricultural property if it is at least 80% of the beneficiary’s assets and they farm actively or lease to an active farmer for 6 years); the giver’s CGT on a gift (31% from 7 Oct 2026) with retirement relief (s.599 to a child: €10m cap ages 55-69, €3m at 70+, excess deferrable; s.598 to others: €750,000/€500,000 with marginal relief); the s.104 credit of CGT against CAT; stamp duty on a gift (land 7.5%, farmhouse residential rates; consanguinity 1% to 31 Dec 2028; young trained farmer relief to 31 Dec 2029 within a €100,000 cap). Returns each tax with and without reliefs, the saving and the clawback periods. Business relief, favourite nephew relief, development land and company shares are not modelled.',
+    page: '/tools/ireland-farm-transfer-tax-calculator/',
+    inputSchema: { type: 'object', properties: {
+      route: str('Gift during the owner’s lifetime or inheritance', ['gift', 'inheritance']), date: { type: 'string', description: 'Date of the gift or valuation date of the inheritance, YYYY-MM-DD (default today)' },
+      relationship: str('Who receives it: child (Group A), relative = brother, sister, nephew, niece, grandchild (Group B), other (Group C)', ['child', 'relative', 'other']),
+      landValue: num('Farmland, buildings, machinery and livestock, EUR'), farmhouseValue: num('Farmhouse, EUR'), otherValue: num('Non-farm assets in the same transfer, EUR'),
+      beneficiaryAssets: num('Beneficiary’s own gross assets before the transfer, EUR (for the 80% test)'), activeFarmer: bool('Beneficiary will farm actively (qualification or 50% of working time) or lease to an active farmer for 6 years'),
+      priorBenefits: num('Earlier taxable gifts/inheritances in the same group since 5 Dec 1991, EUR'),
+      disponerAge: num('Gift only: age of the person giving the farm'), baseCost: num('Gift only: CGT base cost of the farm (indexed for pre-2003 years), EUR'),
+      ownedAndUsed10Years: bool('Gift only: owned and farmed (or let within the rules) for 10 years (default true)'), priorRelievedTransfers: num('Gift only: earlier relieved transfers (to children from 2025, or lifetime consideration to others), EUR'),
+      youngTrainedFarmer: bool('Gift only: transferee under 35 with a farming qualification and a Teagasc business plan'),
+    }, required: ['route', 'relationship', 'landValue', 'activeFarmer'] },
+    run: (a) => wrap('/tools/ireland-farm-transfer-tax-calculator/', computeFarm({ route: a.route === 'inheritance' ? 'inheritance' : 'gift', date: typeof a.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(a.date) ? a.date : new Date().toISOString().slice(0, 10), relationship: (['child', 'relative', 'other'].includes(a.relationship) ? a.relationship : 'other') as Relationship, landValue: a.landValue, farmhouseValue: a.farmhouseValue, otherValue: a.otherValue, beneficiaryAssets: a.beneficiaryAssets, activeFarmer: !!a.activeFarmer, priorBenefits: a.priorBenefits, disponerAge: a.disponerAge, baseCost: a.baseCost, ownedAndUsed10Years: a.ownedAndUsed10Years !== false, priorRelievedTransfers: a.priorRelievedTransfers, youngTrainedFarmer: !!a.youngTrainedFarmer }),
+      ['https://www.revenue.ie/en/tax-professionals/tdm/capital-acquisitions-tax/cat-manual/part-10-reliefs/', 'https://www.revenue.ie/en/tax-professionals/tdm/income-tax-capital-gains-tax-corporation-tax/part-19/19-06-03b.pdf', 'https://www.revenue.ie/en/property/stamp-duty/farming/young-trained-farmer-relief.aspx', 'https://www.oireachtas.ie/en/bills/bill/2026/98/']),
   },
   {
     name: 'uk_pension_drawdown',
