@@ -37,6 +37,12 @@ describe("Carer's Allowance (Citizens Information + DSP SW19 2026, read 2026-11-
     expect(r.weekly).toBe(212.5);
   });
 
+  it('caring for two or more in 2027: €420, or €477 at 66+ (Social Welfare Bill 2026 Sch. 2 para 8, read 12 Nov 2026)', () => {
+    const p = (aged66: boolean) => computeCarer({ period: 'h1-2027', aged66, caringForTwoOrMore: true, couple: false, earn1: 0, capital: 0 }).maxRate;
+    expect(p(false)).toBe(420);
+    expect(p(true)).toBe(477);
+  });
+
   it('a single carer with no other income gets the full rate; 2027 adds €10', () => {
     const a = computeCarer({ period: 'h2-2026', aged66: false, caringForTwoOrMore: false, couple: false, earn1: 0, capital: 0 });
     const b = computeCarer({ period: 'h1-2027', aged66: false, caringForTwoOrMore: false, couple: false, earn1: 0, capital: 0 });

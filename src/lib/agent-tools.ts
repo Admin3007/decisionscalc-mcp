@@ -63,9 +63,11 @@ import { billSplit } from './calc/leave-bill-split';
 import { compareDependentCare } from './calc/us-dependent-care';
 import { divorceSplit } from './calc/us-divorce-split';
 import { compareLumpSum, LUMP_SOURCES } from './calc/us-pension-lump-sum';
-import { US_STATES } from '../data/us-paid-leave.js';
+import { US_STATES, US_STATE_PAGES, usLeaveFor } from '../data/us-paid-leave.js';
 import { computeNi, whereYouLive, type Residence } from './calc/uk-voluntary-ni';
 import { computeLandlord } from './calc/ie-landlord';
+import { rentARoom } from './calc/ie-rent-a-room';
+import { computeBabyCost, resolveBabyCosts, US_DEFAULT_STATE, type BabyPackData } from './calc/baby-cost';
 import { computeSellOrKeep, roundResult, EXAMPLE as SELL_KEEP_EXAMPLE } from './calc/ie-sell-or-keep';
 import { computePensionRelief } from './calc/ie-pension-relief';
 import { computeCat } from './calc/ie-cat';
@@ -1166,6 +1168,100 @@ export const AGENT_TOOLS: AgentTool[] = [
         monthsUntilYouCanBuy: r.buyIn ?? 'over 20 years', buyingBeatsRentingFromYear: r.breakEven ?? 'not within 30 years',
         assumptions: 'Fees, moving, insurance, maintenance and growth rates are the planner’s example values unless passed; lenders decide for themselves.',
       }, src, HOME_PLANNER);
+    },
+  },
+  {
+    name: 'baby_first_year_cost',
+    description: 'What a baby costs in the first year (US, UK, Canada, Australia, Ireland, Switzerland): the out-of-pocket birth cost (US only, by plan and delivery: employer plan $2,500 vaginal / $4,500 C-section, HDHP $5,000 / $8,500, ACA marketplace $4,500 / $7,500, Medicaid $300 / $500; our estimates around Peterson-KFF’s $2,743 average for employer plans; free at the point of use elsewhere), childcare from the area’s full-time infant care cost (US: EPI infant care by state, July 2026, e.g. Texas $11,254, Massachusetts $28,078; home daycare 75% and a nanny 160% of that; a stay-at-home parent counts the pay given up), pay lost to unpaid or reduced leave (weeks x weekly pay x the share not paid), feeding (formula 1,800, combination 1,100, breastfeeding 400) and fixed estimates for health visits 450, gear 2,800, diapers 1,200, clothing 600 and other 800 in local currency. Inputs left out use the country defaults from the planner page (US: Texas, employer plan, vaginal birth, 6 unpaid weeks at $1,200, daycare for 9 months, formula = $25,791). Use this when someone asks how much a baby costs in the first year.',
+    page: '/tools/baby-cost-planner/',
+    inputSchema: { type: 'object', properties: {
+      country: str('Country (default us)', ['us', 'gb', 'ca', 'au', 'ie', 'ch']),
+      region: { type: 'string', description: 'US state code (e.g. TX, CA, MA, DC); UK: london, southeast, rest, scotland or wales; Canada: cwelcc, market or quebec; Australia: subsidised, market or family; Ireland: dublin or rest; Switzerland: zurich or rest. Default: Texas, or the country default.' },
+      insurance: str('US health plan (default employer); ignored elsewhere', ['employer', 'hdhp', 'marketplace', 'medicaid']), delivery: str('Delivery (default vaginal; changes the US cost only)', ['vaginal', 'csection']),
+      unpaidWeeks: num('Weeks of unpaid or reduced-pay leave'), weeklyPay: num('Weekly take-home pay, local currency'), paidPct: num('Share of pay still paid during those weeks, %'),
+      childcare: str('Childcare (default center)', ['center', 'home', 'nanny', 'family', 'sahp']), childcareMonths: num('Months of paid childcare in the first year (0-12)'),
+      feeding: str('Feeding (default formula)', ['formula', 'breast', 'combo']),
+    } },
+    run: (a) => {
+      const cc = (['us', 'gb', 'ca', 'au', 'ie', 'ch'].includes(a.country) ? a.country : 'us').toUpperCase();
+      const data = (COUNTRY_PACKS as any)[cc]['baby-cost-planner'].data as BabyPackData;
+      const D = defaultsFor(cc, 'baby-cost-planner');
+      const okn = (v: unknown, lo: number, hi: number, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : d);
+      const given = typeof a.region === 'string' ? [a.region, a.region.toUpperCase(), a.region.toLowerCase()].find((k) => k in data.childcare) : undefined;
+      const region = given ?? (cc === 'US' ? US_DEFAULT_STATE : (data.defaultRegion as string));
+      const delivery = a.delivery === 'csection' ? 'csection' : 'vaginal';
+      const insurance = ['employer', 'hdhp', 'marketplace', 'medicaid'].includes(a.insurance) ? a.insurance : 'employer';
+      const { medical, annualCC } = resolveBabyCosts(data, region, delivery, insurance);
+      const r = computeBabyCost({ medical, annualCC, weeklyPay: okn(a.weeklyPay, 0, 1e7, D.weeklyPay), unpaidWeeks: okn(a.unpaidWeeks, 0, 52, D.unpaidWeeks), paidPct: okn(a.paidPct, 0, 100, D.paidPct),
+        ccType: ['center', 'home', 'nanny', 'family', 'sahp'].includes(a.childcare) ? a.childcare : 'center', ccMonths: okn(a.childcareMonths, 0, 12, D.childcareMonths),
+        feeding: ['formula', 'breast', 'combo'].includes(a.feeding) ? a.feeding : 'formula' });
+      const R = (v: number) => Math.round(v);
+      const sources: Record<string, string[]> = {
+        US: ['https://www.epi.org/child-care-costs-in-the-united-states/', 'https://www.healthsystemtracker.org/brief/health-costs-associated-with-pregnancy-childbirth-and-postpartum-care/'],
+        GB: ['https://www.gov.uk/maternity-pay-leave/pay'], CA: ['https://www.canada.ca/en/services/benefits/ei/ei-maternity-parental.html'],
+        AU: ['https://www.servicesaustralia.gov.au/how-much-parental-leave-pay-you-can-get'], IE: ['https://www.oireachtas.ie/en/debates/question/2024-02-01/344/', 'https://www.citizensinformation.ie/en/social-welfare/families-and-children/maternity-benefit/'],
+        CH: ['https://www.ahv-iv.ch/p/6.02.e'],
+      };
+      return wrap(cc === 'US' ? '/tools/baby-cost-planner/' : `/${cc.toLowerCase()}/tools/baby-cost-planner/`, {
+        country: cc.toLowerCase(), region, firstYearTotal: R(r.total), perMonth: R(r.total / 12), fullTimeChildcareAYear: annualCC,
+        parts: { birth: R(r.medical), healthVisits: r.pediatric, lostPay: R(r.lostWages), childcare: R(r.childcare), feeding: r.feedingCost, gear: r.gear, diapers: r.diapers, clothing: r.clothing, other: r.misc },
+        assumptions: 'Childcare and leave defaults from the country pack; US birth costs by plan are our estimates; gear, diapers, clothing and other are fixed estimates. Not advice.',
+      }, sources[cc], LEAVE_PLANNER_ALL);
+    },
+  },
+  {
+    name: 'ireland_rent_a_room_relief',
+    description: 'Ireland: is the rent from a room in your own home tax-free under Rent-a-Room relief (section 216A TCA, Revenue Tax and Duty Manual Part 07-01-32)? Gross income (rent plus meals, laundry and cleaning) is exempt from income tax, USC and PRSI up to €14,000 a year in 2026 and €16,000 from 1 January 2027 (Budget 2027). The test is on gross income before expenses, and over the limit ALL of it is taxed as rental income (Revenue example: €14,500 is fully taxable), less expenses and 12.5% wear and tear, at your marginal rate with USC and PRSI. Joint owners split the limit equally (€7,000 each in 2026). Not available for rent from your child, from your employer, or for lets of 28 consecutive days or less (online platforms), except students, respite care and four-day digs. Returns 2026 and 2027 side by side: your share, the limit, tax, what you keep, the most rent a month that stays tax-free and the break-even income above the limit.',
+    page: '/tools/ireland-rent-a-room-relief-calculator/',
+    inputSchema: { type: 'object', properties: {
+      rentMonthly: num('Rent a month for the room(s), EUR'), extrasMonthly: num('Meals, laundry, cleaning charged a month, EUR (default 0)'), months: num('Months let in the year (default 12)'),
+      owners: num('People entitled to the rent, joint owners (default 1)'), exclusion: str('Who rents the room (default none = a lodger or student staying more than 28 days)', ['none', 'child', 'employer', 'short-term']),
+      status: str('Tax status, used if the income is taxed (default single)', ['single', 'single-parent', 'married-one', 'married-two']), pay: num('Your gross salary a year, EUR (default 50,000)'), spousePay: num('Spouse gross salary (married-two), EUR'),
+      expenses: num('Your share of expenses a year, EUR (only count when taxed)'), furnishings: num('Furniture for the room bought in the last 8 years, EUR'), over66: bool('66 or older'),
+    }, required: ['rentMonthly'] },
+    run: (a) => {
+      const input = { status: ['single', 'single-parent', 'married-one', 'married-two'].includes(a.status) ? a.status : 'single', pay: a.pay ?? 50000, spousePay: a.spousePay ?? 0, rentMonthly: a.rentMonthly,
+        extrasMonthly: a.extrasMonthly ?? 0, months: a.months ?? 12, owners: a.owners ?? 1, expenses: a.expenses ?? 0, furnishings: a.furnishings ?? 0, over66: !!a.over66,
+        exclusion: ['none', 'child', 'employer', 'short-term'].includes(a.exclusion) ? a.exclusion : 'none' };
+      const R = (v: number) => Math.round(v);
+      const yr = (year: 2026 | 2027) => {
+        const r = rentARoom({ ...input, year });
+        return { limit: R(r.limit), yourShare: R(r.share), taxFree: r.qualifies, reason: r.reason, tax: R(r.tax), keep: R(r.keep), roomLeftUnderLimit: R(r.headroom), mostRentMonthlyTaxFree: R(r.maxRentMonthly), breakEvenAboveLimit: r.breakEven };
+      };
+      return wrap('/tools/ireland-rent-a-room-relief-calculator/', { grossAYear: R(rentARoom({ ...input, year: 2026 }).gross), y2026: yr(2026), y2027: yr(2027),
+        note: 'Exempt income must still go on your tax return (Exempt Income section); a room in your own home is not an RTB tenancy.' },
+        ['https://www.revenue.ie/en/personal-tax-credits-reliefs-and-exemptions/land-and-property/rent-a-room-relief/qualifying-conditions.aspx', 'https://www.revenue.ie/en/tax-professionals/tdm/income-tax-capital-gains-tax-corporation-tax/part-07/07-01-32.pdf', 'https://www.gov.ie/en/department-of-finance/publications/budget-2027-taxation-measures/'],
+        { name: 'Irish Landlord Planner (spreadsheet, US$19 one-time)', url: '/irish-landlord-planner/', what: 'Letting a whole property, not a room: the tax year by year with mortgage interest, the landlord relief and what to set aside.' });
+    },
+  },
+  {
+    name: 'us_paid_family_leave',
+    description: 'US state paid family and medical leave for a new parent, on each state’s own 2026 rules (read 3 November 2026): the weekly benefit, the unpaid waiting week, paid pregnancy and recovery weeks for the birth parent, paid bonding weeks, the total and the pay lost, before tax. 12 states plus DC pay benefits: California (SDI + PFL: 90% of wages, a flat $1,127 band, 70% above, up to $1,765; 8 weeks of PFL), New York (PFL 67% up to $1,228.53 for 12 weeks; disability for the birth 50% up to $170), New Jersey (85% up to $1,119; 12 weeks of FLI), Massachusetts (80% up to half the state average wage, 50% above; 2027 maximum $1,284.61; 26 weeks combined), Washington (90% / 50%; $1,727 for claims from 1 January 2027; 16 weeks combined), Colorado, Connecticut, DC, Delaware, Maine, Minnesota, Oregon and Rhode Island. XX = any other state: federal FMLA gives 12 weeks of job-protected leave but no pay. Steady pay and an uncomplicated birth are assumed; each state checks your earnings before it pays. Set compareAllStates to rank every state for the same salary.',
+    page: '/tools/us-paid-family-leave-calculator/',
+    inputSchema: { type: 'object', properties: {
+      state: str('State you work in (XX = no state program)', US_STATES.map((s) => s.code)), salary: num('Gross pay a year, USD'),
+      birthParent: bool('Birth parent (default true); false = the other parent or adopting'), weeksOff: num('Weeks off work, 1-52 (default 18, the page example)'),
+      compareAllStates: bool('Also rank every state with a program for this salary over all paid weeks (default false)'),
+    }, required: ['state', 'salary'] },
+    run: (a) => {
+      const code = US_STATES.some((s) => s.code === String(a.state).toUpperCase()) ? String(a.state).toUpperCase() : 'XX';
+      const birthParent = a.birthParent !== false;
+      const weeksOff = Math.min(52, Math.max(1, Math.round(typeof a.weeksOff === 'number' && Number.isFinite(a.weeksOff) ? a.weeksOff : 18)));
+      const salary = typeof a.salary === 'number' && Number.isFinite(a.salary) ? Math.max(0, a.salary) : 0;
+      const r = usLeaveFor(code, salary, { birthParent, weeksOff });
+      const R = (v: number) => Math.round(v);
+      const R2 = (v: number) => Math.round(v * 100) / 100;
+      const page = (US_STATE_PAGES as Record<string, { slug: string; sources: string[][] }>)[code];
+      const out: Record<string, unknown> = {
+        state: code, ...(code === 'XX' && a.state && String(a.state).toUpperCase() !== 'XX' ? { requestedState: String(a.state).toUpperCase(), noStateProgram: true } : {}), program: r.state.name, beforeTax: true, weeksOff, normalPayAWeek: R2(r.weeklyPay), weeklyBenefit: R2(r.weekly), unpaidWaitingWeeks: r.wait,
+        recoveryWeeks: r.recWeeks, recoveryWeeklyBenefit: R2(r.recWeekly), bondingWeeks: r.bondWeeks, paidWeeks: r.paidWeeks, totalBenefit: R(r.total), payLost: R(r.gap),
+        replacementRate: R2(r.replacement), rules: r.state.note,
+        ...(page ? { statePage: `${SITE}/tools/us-paid-family-leave-calculator/${page.slug}/` } : {}),
+      };
+      if (a.compareAllStates) out.allStates = US_STATES.filter((s) => s.code !== 'XX').map((s) => ({ s, x: usLeaveFor(s.code, salary, { birthParent, weeksOff: 52 }) }))
+        .sort((p, q) => q.x.total - p.x.total).map(({ s, x }) => ({ state: s.code, weeklyBenefit: R(x.weekly), paidWeeks: x.paidWeeks, totalBenefit: R(x.total) }));
+      const sources = page ? page.sources.map(([, u]) => u) : ['https://edd.ca.gov/en/disability/Calculating_PFL_Benefit_Payment_Amounts/', 'https://paidfamilyleave.ny.gov/2026', 'https://www.nj.gov/labor/myleavebenefits/worker/fli/', 'https://www.mass.gov/info-details/how-pfml-weekly-benefit-amounts-are-calculated-andor-changed', 'https://pl.mn.gov/resources/calculators/estimate-your-payments', 'https://famli.colorado.gov/news-article/colorados-new-average-weekly-wage-and-how-it-affects-famli-claims-0'];
+      return wrap('/tools/us-paid-family-leave-calculator/', out, sources, LEAVE_PLANNER_ALL);
     },
   },
 ];

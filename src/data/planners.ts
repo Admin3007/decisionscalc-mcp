@@ -127,6 +127,7 @@ export const ALL_PLANNERS: Planner[] = Object.values(PLANNERS).filter((p) => p.o
 const TOOL_PLANNER: Record<string, PlannerId | PlannerId[]> = {
   'wedding-cost-calculator': 'wedding',
   'baby-cost-planner': 'leave',
+  'cost-of-raising-a-child-calculator': 'leave',
   'us-paid-family-leave-calculator': 'leave',
   'canada-ei-benefit-calculator': 'leave',
   'quebec-qpip-calculator': 'leave',

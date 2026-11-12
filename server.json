@@ -3,7 +3,7 @@
   "name": "com.decisionscalc/calculators",
   "title": "DecisionsCalc calculators",
   "description": "Official-rule calculators: retirement, home buying, tax, benefits, leave, FSA (US UK IE CA AU NZ).",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "websiteUrl": "https://decisionscalc.com/for-agents/",
   "remotes": [
     {
